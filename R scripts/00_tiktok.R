@@ -14,6 +14,7 @@ library(here)
 library(readxl)
 library(lubridate)
 library(ggplot2)
+library(patchwork)
 
 #### LOAD DATA FROM DRIVE ####
 
@@ -64,6 +65,12 @@ week_overview <- week_overview %>%
 week_follower_activity <- week_follower_activity %>%
   mutate(Date = mdy(paste(Date, Year)))
 
+week_follower_activity$datetime <- as.POSIXct(
+  paste(week_follower_activity$Date, sprintf("%02d:00:00", week_follower_activity$Hour)),
+  tz = "UTC"
+)
+
+
 ## overview 
 overview_2025 <- tiktok_overview %>% filter(Year == 2025)
 overview_2025 <- overview_2025 %>%
@@ -79,54 +86,85 @@ overview_2026 <- overview_2026 %>%
 # profile views
 (pv.week.ts.pl <- week_overview %>% ggplot(aes(x = Date, y = profile_views)) +
    geom_line() + theme_classic() +
-   labs(title = "1/4 - 1/11 Tiktok profile views",
+   labs(title = "1/1 - 1/11 Tiktok profile views",
         y = "Profile Views") +
    geom_vline(
      data = calendar,
-     aes(xintercept = Date, color = Where),
+     aes(xintercept = Date, color = Media),
      alpha = 0.6
-   ))
+   ) + theme(legend.position = "none"))
 # video views 
 (vv.week.ts.pl <- week_overview %>% ggplot(aes(x = Date, y = video_views)) +
     geom_line() + theme_classic() +
-    labs(title = "1/4 - 1/11 Tiktok video views",
+    labs(title = "1/1 - 1/11 Tiktok video views",
          y = "Daily video views") +
     geom_vline(
       data = calendar,
-      aes(xintercept = Date, color = Where),
+      aes(xintercept = Date, color = Media),
       alpha = 0.6
-    ))
+    ) +theme(legend.position = "none"))
+
 
 # video views to profile views
 (vvpv.week.ts.pl <- week_overview %>% ggplot(aes(x = Date, y = profile_views/video_views)) +
     geom_line() + theme_classic() +
-    labs(title = "1/4 - 1/11 Tiktok % of peopl checking out profile after seeing tiktok",
+    labs(title = "1/1 - 1/11 Tiktok % of peopl checking out profile after seeing tiktok",
          y = "%") +
     geom_vline(
       data = calendar,
-      aes(xintercept = Date, color = Where),
+      aes(xintercept = Date, color = Media),
       alpha = 0.6
     ))
 
+(pv_vv <- pv.week.ts.pl +vv.week.ts.pl +vvpv.week.ts.pl)
+ggsave(pv_vv, path = "Plots", file = "weekly_pv_vv.jpeg", width = 20, height = 10, units = "in")
+
 #followers
-week_overview %>% ggplot(aes(x = Date, y = change_followers)) +
+(delta.followers.pl <- week_overview %>% ggplot(aes(x = Date, y = change_followers)) +
   geom_line() + theme_classic() +
-  labs(title = "1/4 - 1/11 Tiktok change in followers",
+  labs(title = "1/1 - 1/11 Tiktok change in followers",
        y = "change in followers") +
   geom_vline(
     data = calendar,
-    aes(xintercept = Date, color = Where),
+    aes(xintercept = Date, color = Media),
     alpha = 0.6
   ) +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +theme(legend.position = "none"))
+
+(followers.pl <- week_overview %>% ggplot(aes(x = Date, y = Followers)) +
+  geom_line() + theme_classic() +
+  labs(title = "1/1 - 1/11 Tiktok followers",
+       y = "Follower count") +
+  geom_vline(
+    data = calendar,
+    aes(xintercept = Date, color = Media),
+    alpha = 0.6
+  ) +
+  geom_hline(yintercept = 0) +ylim(15650,17000))
+
+(followers <- delta.followers.pl +followers.pl)
+ggsave(followers, path = "Plots", file = "weekly_followers.jpeg", width = 20, height = 10, units = "in")
+
 
 # success of content this week
 (week.content.eng.bar.pl <- week_content %>% ggplot((aes(x = Date, y = `engagement index`))) +
   geom_col() + theme_classic() +
-  labs(title = "1/4-1/11 Content engagement"))
+  labs(title = "1/1-1/11 Content engagement"))
+
+ggsave(week.content.eng.bar.pl, path = "Plots", file = "weekly_engagement.jpeg", width = 20, height = 10, units = "in")
+
+## follower activity
+week_follower_activity %>% ggplot(aes(x = datetime, y = `Active followers`)) +
+  geom_line()
+
+(follower.time.day.pl <- week_follower_activity %>% ggplot(aes(x = Hour, y = `Active followers`)) +
+  geom_col() + theme_classic() +labs(title = "1/1-1/11 follower activity time of day"))
+
+ggsave(follower.time.day.pl, path = "Plots", file = "follower_timeofday.jpeg", width = 15, height = 10, units = "in")
 
 
-# 2025 analysis
+
+## 2025 analysis
 # profile views
 (pv.2025.ts.pl <- overview_2025 %>% ggplot(aes(x = Date, y = profile_views)) +
   geom_line() + theme_classic() +
@@ -147,16 +185,23 @@ week_overview %>% ggplot(aes(x = Date, y = change_followers)) +
 ggsave(pv.2025.ts.pl, path = "Plots", file = "prof_views_ts.jpeg", width = 15, height = 10, units = "in")
 
 # followers
-overview_2025 %>% ggplot(aes(x = Date, y = change_followers)) +
+(follower.2025.ts.pl <- overview_2025 %>% ggplot(aes(x = Date, y = Followers)) +
   geom_line() + theme_classic() +
-  labs(title = "2025 Tiktok change in followers",
-       y = "change in followers") +
+  labs(title = "2025 Tiktok Follower count",
+       y = "Followers") +
   geom_vline(
     data = calendar,
     aes(xintercept = Date, color = Media),
     alpha = 0.6
   ) +
-  geom_hline(yintercept = 0)
+  theme(plot.title = element_text(size = 40, face = "bold"),
+        legend.title=element_text(size=30), 
+        legend.text=element_text(size=25),
+        axis.text.y = element_text(size = 15),
+        axis.title.y = element_text(size = 25),
+        axis.title.x = element_text(size = 25)))
+ggsave(follower.2025.ts.pl, path = "Plots", file = "followers_2025_ts.jpeg", width = 15, height = 10, units = "in")
+
 
 # video views
 (vv.ts.pl <- overview_2025 %>% ggplot(aes(x = Date, y = video_views)) +
