@@ -22,81 +22,67 @@ library(patchwork)
 calendar <- read_sheet("https://docs.google.com/spreadsheets/d/1Mcsu2AJTcEQh2r0rBPlj_ZL_VzrWlqGU8ZNSjrTkplI/edit?gid=1779911818#gid=1779911818",
                        sheet = "calendar", col_types = "ncccc")
 
-calendar <- calendar %>%
-  mutate(Date = mdy(paste(Date, Year)))
-
 ## weekly updates
 week_overview <- read_sheet("https://docs.google.com/spreadsheets/d/1x4sEUtWDg8ERLhu43SujgmvJMzBbKm-fUkDUCnHE7EU/edit",
-                   sheet = "overall", col_type = "nccnnnnnnnnnn")
+                   sheet = "overall", col_type = "nDcnnnnnnnnnn")
 week_content <- read_sheet("https://docs.google.com/spreadsheets/d/1x4sEUtWDg8ERLhu43SujgmvJMzBbKm-fUkDUCnHE7EU/edit",
-                            sheet = "content", col_type = "ncccnnnnnc")
-week_follower_activity <- read_sheet("https://docs.google.com/spreadsheets/d/1x4sEUtWDg8ERLhu43SujgmvJMzBbKm-fUkDUCnHE7EU/edit",
-                           sheet = "follower_activity", col_type = "ncnn")
+                            sheet = "content")
 
 # #compiled data
-tik_tok_new <- drive_get(as_id("https://drive.google.com/drive/u/0/folders/1ygFjhBgYD9TCMIEVERetMd2Ob8VSPAGo"))
-tik_tok_glist <- drive_ls(tik_tok_new)
-setwd(here("Data/Tiktok"))
-
-walk(tik_tok_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
-file_list <- list.files(recursive = FALSE, pattern = "all", full.names = TRUE)
-
-tiktok_overview <- bind_rows(lapply(file_list, read_xlsx))
-
-tiktok_content <- map_df(
-  file_list,
-  ~ read_excel(.x, sheet = "content")
-)
-
-
-tiktok_followers <- map_df(
-  file_list,
-  ~ read_excel(.x, sheet = "follower_activity")
-) %>% filter(Year == 2026) #only data for 2026
-
-
-setwd(here())
+# tik_tok_new <- drive_get(as_id("https://drive.google.com/drive/u/0/folders/1ygFjhBgYD9TCMIEVERetMd2Ob8VSPAGo"))
+# tik_tok_glist <- drive_ls(tik_tok_new)
+# setwd(here("Data/Tiktok"))
+# 
+# walk(tik_tok_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+# file_list <- list.files(recursive = FALSE, pattern = "all", full.names = TRUE)
+# 
+# tiktok_overview <- bind_rows(lapply(file_list, read_xlsx))
+# 
+# tiktok_content <- map_df(
+#   file_list,
+#   ~ read_excel(.x, sheet = "content")
+# )
+# 
+# 
+# tiktok_followers <- map_df(
+#   file_list,
+#   ~ read_excel(.x, sheet = "follower_activity")
+# ) %>% filter(Year == 2026) #only data for 2026
+# 
+# 
+# setwd(here())
 #### MUNGE ####
 
-## week 
-week_overview <- week_overview %>%
-  mutate(Date = mdy(paste(Date, Year)))
-
-week_follower_activity <- week_follower_activity %>%
-  mutate(Date = mdy(paste(Date, Year)))
-
-week_follower_activity$datetime <- as.POSIXct(
-  paste(week_follower_activity$Date, sprintf("%02d:00:00", week_follower_activity$Hour)),
-  tz = "UTC"
-)
-
-
 ## overview 
-overview_2025 <- tiktok_overview %>% filter(Year == 2025)
-overview_2025 <- overview_2025 %>%
-  mutate(Date = mdy(paste(Date, Year)))
-
-overview_2026 <- tiktok_overview %>% filter(Year == 2026)
-overview_2026 <- overview_2026 %>%
-  mutate(Date = mdy(paste(Date, Year)))
+# overview_2025 <- tiktok_overview %>% filter(Year == 2025)
+# overview_2025 <- overview_2025 %>%
+#   mutate(Date = mdy(paste(Date, Year)))
+# 
+# overview_2026 <- tiktok_overview %>% filter(Year == 2026)
+# overview_2026 <- overview_2026 %>%
+#   mutate(Date = mdy(paste(Date, Year)))
 
 #### PLOT ####
 
 ## weekly report
 # profile views
 (pv.week.ts.pl <- week_overview %>% ggplot(aes(x = Date, y = profile_views)) +
-   geom_line() + theme_classic() +
-   labs(title = "1/1 - 1/11 Tiktok profile views",
+   geom_point() + 
+   geom_line()+
+   theme_classic() +
+   labs(title = "February Daily Tiktok profile views",
         y = "Profile Views") +
    geom_vline(
      data = calendar,
      aes(xintercept = Date, color = Media),
      alpha = 0.6
-   ) + theme(legend.position = "none"))
+   ) +theme(legend.position = "none"))
 # video views 
 (vv.week.ts.pl <- week_overview %>% ggplot(aes(x = Date, y = video_views)) +
-    geom_line() + theme_classic() +
-    labs(title = "1/1 - 1/11 Tiktok video views",
+    geom_point() + 
+    geom_line()+ 
+    theme_classic() +
+    labs(title = "February Daily Tiktok video views",
          y = "Daily video views") +
     geom_vline(
       data = calendar,
@@ -107,8 +93,10 @@ overview_2026 <- overview_2026 %>%
 
 # video views to profile views
 (vvpv.week.ts.pl <- week_overview %>% ggplot(aes(x = Date, y = profile_views/video_views)) +
-    geom_line() + theme_classic() +
-    labs(title = "1/1 - 1/11 Tiktok % of peopl checking out profile after seeing tiktok",
+    geom_point() + 
+    geom_line()+
+    theme_classic() +
+    labs(title = "February  Tiktok % of peopl checking out profile after seeing tiktok",
          y = "%") +
     geom_vline(
       data = calendar,
@@ -117,12 +105,14 @@ overview_2026 <- overview_2026 %>%
     ))
 
 (pv_vv <- pv.week.ts.pl +vv.week.ts.pl +vvpv.week.ts.pl)
-ggsave(pv_vv, path = "Plots", file = "weekly_pv_vv.jpeg", width = 20, height = 10, units = "in")
+ggsave(pv_vv, path = "Plots", file = "weekly__tiktok_pv_vv.jpeg", width = 20, height = 10, units = "in")
 
 #followers
 (delta.followers.pl <- week_overview %>% ggplot(aes(x = Date, y = change_followers)) +
-  geom_line() + theme_classic() +
-  labs(title = "1/1 - 1/11 Tiktok change in followers",
+    geom_point() + 
+    geom_line()+
+    theme_classic() +
+  labs(title = "February Tiktok change in followers",
        y = "change in followers") +
   geom_vline(
     data = calendar,
@@ -132,36 +122,37 @@ ggsave(pv_vv, path = "Plots", file = "weekly_pv_vv.jpeg", width = 20, height = 1
   geom_hline(yintercept = 0) +theme(legend.position = "none"))
 
 (followers.pl <- week_overview %>% ggplot(aes(x = Date, y = Followers)) +
-  geom_line() + theme_classic() +
-  labs(title = "1/1 - 1/11 Tiktok followers",
+    geom_point() + 
+    geom_line()+
+    theme_classic() +
+  labs(title = "February Tiktok followers",
        y = "Follower count") +
   geom_vline(
     data = calendar,
     aes(xintercept = Date, color = Media),
     alpha = 0.6
-  ) +
-  geom_hline(yintercept = 0) +ylim(15650,17000))
+  ) +ylim(17200,17220))
 
 (followers <- delta.followers.pl +followers.pl)
-ggsave(followers, path = "Plots", file = "weekly_followers.jpeg", width = 20, height = 10, units = "in")
+ggsave(followers, path = "Plots", file = "weekly_tiktok_followers.jpeg", width = 20, height = 10, units = "in")
 
 
 # success of content this week
-(week.content.eng.bar.pl <- week_content %>% ggplot((aes(x = Date, y = `engagement index`))) +
+(week.content.eng.bar.pl <- week_content %>% filter(Date >= "2026-02-01" & Date<= "2026-02-28")%>% ggplot((aes(x = Date, y = `engagement index`))) +
   geom_col() + theme_classic() +
-  labs(title = "1/1-1/11 Content engagement"))
+  labs(title = "February Content engagement"))
 
-ggsave(week.content.eng.bar.pl, path = "Plots", file = "weekly_engagement.jpeg", width = 20, height = 10, units = "in")
+ggsave(week.content.eng.bar.pl, path = "Plots", file = "weekly_tiktok_engagement.jpeg", width = 20, height = 10, units = "in")
 
 ## follower activity
-week_follower_activity %>% ggplot(aes(x = datetime, y = `Active followers`)) +
-  geom_line()
-
-(follower.time.day.pl <- week_follower_activity %>% ggplot(aes(x = Hour, y = `Active followers`)) +
-  geom_col() + theme_classic() +labs(title = "1/1-1/11 follower activity time of day"))
-
-ggsave(follower.time.day.pl, path = "Plots", file = "follower_timeofday.jpeg", width = 15, height = 10, units = "in")
-
+# week_follower_activity %>% ggplot(aes(x = datetime, y = `Active followers`)) +
+#   geom_line()
+# 
+# (follower.time.day.pl <- week_follower_activity %>% ggplot(aes(x = Hour, y = `Active followers`)) +
+#   geom_col() + theme_classic() +labs(title = "1/12-1/18 follower activity time of day"))
+# 
+# ggsave(follower.time.day.pl, path = "Plots", file = "follower_timeofday.jpeg", width = 15, height = 10, units = "in")
+# 
 
 
 ## 2025 analysis
